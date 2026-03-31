@@ -14,7 +14,6 @@ import java.util.Random;
  * Padding   : PKCS5Padding (preenche o último bloco com N bytes de valor N)
  * Chave     : primeiros 16 chars hex do SHA-1 de um número aleatório de 7 dígitos
  *
- * Uso: java -cp src EncryptTool input/documento.pdf
  */
 public class EncryptTool {
 

@@ -17,7 +17,6 @@ import java.security.NoSuchAlgorithmException;
  *         calcular a chave para cada um e tentar decifrar.
  *         Quando os primeiros 4 bytes forem "%PDF", encontrámos a chave certa.
  *
- * Uso: java -cp src DecryptTool input/documento.pdf.enc
  */
 public class DecryptTool {
 
