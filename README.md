@@ -72,23 +72,6 @@ CA_APP-main/
 
 ---
 
-## Compilação e Execução
-
-### 1. Compilar
-
-```bash
-cd CA_APP-main/C1-Final
-javac *.java
-```
-
-### 2. Executar
-
-```bash
-java Decifrador
-```
-
-O programa detecta automaticamente os ficheiros `.enc` presentes na pasta de execução, apresenta uma lista e pede ao utilizador que selecione o ficheiro a decifrar.
-
 ### Exemplo de output
 
 ```
