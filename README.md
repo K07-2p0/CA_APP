@@ -1,7 +1,6 @@
 # 🔓 Decifrador AES — Força Bruta com Multithreading
 
-> **Número de encriptação:** `6753090`  
-> **Versão:** 3.0  
+> **Número de encriptação:** `6753090`   
 > **Grupo:** G15  
 > **Unidade Curricular:** Criptografia Aplicada (CA) — 2026
 
