@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Criptografia Aplicada — TP C2</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1f2535;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --accent4: #f59e0b;
+    --text: #e8ecf4;
+    --muted: #6b7280;
+    --danger: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  /* ── SLIDES ── */
+  .slide {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 80px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── SLIDE 1 – CAPA ── */
+  #capa {
+    background: radial-gradient(ellipse at 20% 50%, #0d1a3a 0%, #0a0c10 60%),
+                radial-gradient(ellipse at 80% 20%, #1a0d2e 0%, transparent 50%);
+    align-items: flex-start;
+    gap: 32px;
+  }
+  #capa .tag {
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    opacity: .8;
+  }
+  #capa h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 800;
+    line-height: .95;
+    color: #fff;
+  }
+  #capa h1 span { color: var(--accent); }
+  #capa .subtitle {
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 480px;
+    line-height: 1.7;
+  }
+  #capa .meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 16px;
+  }
+  #capa .meta-item { display: flex; flex-direction: column; gap: 4px; }
+  #capa .meta-item span:first-child { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+  #capa .meta-item span:last-child { font-size: 13px; color: var(--accent); }
+
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* ── SLIDE 2 – ÍNDICE ── */
+  #indice { background: var(--bg); }
+  .cat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .cat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .2s, transform .2s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .cat-card:hover { border-color: var(--accent); transform: translateY(-4px); }
+  .cat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .cat-card.pm::before { background: var(--accent); }
+  .cat-card.sc::before { background: var(--accent2); }
+  .cat-card.id::before { background: var(--accent3); }
+  .cat-card.en::before { background: var(--accent4); }
+  .cat-code { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; }
+  .cat-card.pm .cat-code { color: var(--accent); }
+  .cat-card.sc .cat-code { color: var(--accent2); }
+  .cat-card.id .cat-code { color: var(--accent3); }
+  .cat-card.en .cat-code { color: var(--accent4); }
+  .cat-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; color: #fff; }
+  .cat-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  .cat-winner { font-size: 11px; margin-top: 8px; padding: 6px 12px; border-radius: 20px; display: inline-block; background: rgba(0,229,255,.08); color: var(--accent); border: 1px solid rgba(0,229,255,.2); }
+  .cat-card.sc .cat-winner { background: rgba(124,58,237,.08); color: #a78bfa; border-color: rgba(124,58,237,.2); }
+  .cat-card.id .cat-winner { background: rgba(16,185,129,.08); color: var(--accent3); border-color: rgba(16,185,129,.2); }
+  .cat-card.en .cat-winner { background: rgba(245,158,11,.08); color: var(--accent4); border-color: rgba(245,158,11,.2); }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+  }
+  .section-code {
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 4px;
+  }
+  .pm-color { background: rgba(0,229,255,.1); color: var(--accent); border: 1px solid rgba(0,229,255,.2); }
+  .sc-color { background: rgba(124,58,237,.1); color: #a78bfa; border: 1px solid rgba(124,58,237,.2); }
+  .id-color { background: rgba(16,185,129,.1); color: var(--accent3); border: 1px solid rgba(16,185,129,.2); }
+  .en-color { background: rgba(245,158,11,.1); color: var(--accent4); border: 1px solid rgba(245,158,11,.2); }
+
+  .slide-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .slide-intro { font-size: 13px; color: var(--muted); max-width: 640px; line-height: 1.7; margin-bottom: 40px; }
+
+  /* ── APP CARDS ── */
+  .apps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .app-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-card.winner {
+    border-color: rgba(0,229,255,.4);
+    background: linear-gradient(135deg, rgba(0,229,255,.04), var(--surface));
+  }
+  .app-card.winner-purple { border-color: rgba(124,58,237,.4); background: linear-gradient(135deg, rgba(124,58,237,.04), var(--surface)); }
+  .app-card.winner-green { border-color: rgba(16,185,129,.4); background: linear-gradient(135deg, rgba(16,185,129,.04), var(--surface)); }
+  .app-card.winner-amber { border-color: rgba(245,158,11,.4); background: linear-gradient(135deg, rgba(245,158,11,.04), var(--surface)); }
+
+  .winner-badge {
+    position: absolute;
+    top: 16px; right: 16px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(0,229,255,.15);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,.3);
+  }
+  .winner-badge.purple { background: rgba(124,58,237,.15); color: #a78bfa; border-color: rgba(124,58,237,.3); }
+  .winner-badge.green { background: rgba(16,185,129,.15); color: var(--accent3); border-color: rgba(16,185,129,.3); }
+  .winner-badge.amber { background: rgba(245,158,11,.15); color: var(--accent4); border-color: rgba(245,158,11,.3); }
+
+  .app-name { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: #fff; }
+  .app-crypto-type {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 4px 10px;
+    background: var(--surface2);
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .app-props { display: flex; flex-direction: column; gap: 8px; }
+  .prop { display: flex; flex-direction: column; gap: 2px; }
+  .prop-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+  .prop-value { font-size: 12px; color: var(--text); line-height: 1.5; }
+  .prop-value code { color: var(--accent); background: rgba(0,229,255,.06); padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+
+  .cia-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cia-item { background: var(--surface2); border-radius: 8px; padding: 10px; text-align: center; }
+  .cia-letter { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+  .cia-label { font-size: 8px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .cia-val { font-size: 10px; }
+  .c-color { color: var(--accent); }
+  .i-color { color: var(--accent3); }
+  .a-color { color: var(--accent4); }
+
+  .app-footer { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .badge {
+    font-size: 10px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: var(--surface2);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .badge.free { color: var(--accent3); border-color: rgba(16,185,129,.3); background: rgba(16,185,129,.06); }
+  .badge.paid { color: var(--danger); border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.06); }
+  .badge.oss { color: var(--accent4); border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.06); }
+
+  /* ── SUMMARY TABLE ── */
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 40px;
+  }
+  .summary-table th {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .summary-table td {
+    padding: 14px 16px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(31,37,53,.5);
+    vertical-align: middle;
+  }
+  .summary-table tr:hover td { background: rgba(0,229,255,.02); }
+  .summary-table .cat { font-weight: 600; color: #fff; }
+  .dot-winner { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+
+  /* ── CONCLUSÃO ── */
+  #conclusao {
+    background: radial-gradient(ellipse at 80% 80%, #0d1a2e 0%, #0a0c10 60%);
+  }
+  .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 40px; }
+  .score-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .score-cat { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; }
+  .score-app { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; color: #fff; }
+  .score-pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .score-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 50%;
+    right: 28px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+  nav a {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background .2s, transform .2s;
+    display: block;
+  }
+  nav a:hover, nav a.active { background: var(--accent); transform: scale(1.5); }
+
+  /* SLIDE NUMBERS */
+  .slide-num {
+    position: absolute;
+    bottom: 28px;
+    right: 48px;
+    font-size: 11px;
+    color: var(--border);
+    letter-spacing: 2px;
+  }
+  .slide-line {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .pm-line { background: linear-gradient(to bottom, var(--accent), transparent); }
+  .sc-line { background: linear-gradient(to bottom, #7c3aed, transparent); }
+  .id-line { background: linear-gradient(to bottom, var(--accent3), transparent); }
+  .en-line { background: linear-gradient(to bottom, var(--accent4), transparent); }
+
+  h2.slide-title-small {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 32px;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+</style>
+</head>
+<body>
+
+<nav id="sidenav">
+  <a href="#capa" title="Capa"></a>
+  <a href="#indice" title="Índice"></a>
+  <a href="#pm" title="C2.PM"></a>
+  <a href="#sc" title="C2.SC"></a>
+  <a href="#id" title="C2.ID"></a>
+  <a href="#en" title="C2.EN"></a>
+  <a href="#conclusao" title="Conclusão"></a>
+</nav>
+
+<!-- ─── SLIDE 1: CAPA ─── -->
+<section class="slide" id="capa">
+  <div class="grid-bg"></div>
+  <span class="tag">Licenciatura em Segurança Informática em Redes de Computadores · 2025/2026</span>
+  <h1>Criptografia<br>Aplicada<br><span>TP C2</span></h1>
+  <p class="subtitle">Investigação de soluções e aplicações que utilizam funcionalidades criptográficas — Mobile &amp; PC.</p>
+  <div class="meta">
+    <div class="meta-item"><span>Prazo</span><span>19-04-2026</span></div>
+    <div class="meta-item"><span>Categorias</span><span>PM · SC · ID · EN</span></div>
+    <div class="meta-item"><span>Critério segurança</span><span>60%</span></div>
+  </div>
+  <span class="slide-num">01 / 07</span>
+</section>
+
+<!-- ─── SLIDE 2: ÍNDICE ─── -->
+<section class="slide" id="indice">
+  <div class="section-header">
+    <span class="section-code" style="background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">ÍNDICE</span>
+  </div>
+  <h1 class="slide-title">Categorias Investigadas</h1>
+  <p class="slide-intro">Para cada categoria foram analisadas 3 soluções, avaliadas segundo Apresentação (10%), Relevância (30%) e Segurança (60%).</p>
+  <div class="cat-grid">
+    <a class="cat-card pm" href="#pm">
+      <span class="cat-code">C2.PM</span>
+      <span class="cat-title">Gestor de Passwords</span>
+      <span class="cat-desc">Soluções para armazenamento seguro e gestão de credenciais em Mobile e PC.</span>
+      <span class="cat-winner">★ Bitwarden</span>
+    </a>
+    <a class="cat-card sc" href="#sc">
+      <span class="cat-code">C2.SC</span>
+      <span class="cat-title">Comunicação Segura</span>
+      <span class="cat-desc">Chat, voz e vídeo com cifragem de ponta a ponta entre dispositivos.</span>
+      <span class="cat-winner">★ Signal</span>
+    </a>
+    <a class="cat-card id" href="#id">
+      <span class="cat-code">C2.ID</span>
+      <span class="cat-title">Identificação / Autenticação</span>
+      <span class="cat-desc">Aplicações de autenticação de dois fatores (2FA / TOTP) para Mobile e PC.</span>
+      <span class="cat-winner">★ Ente Auth</span>
+    </a>
+    <a class="cat-card en" href="#en">
+      <span class="cat-code">C2.EN</span>
+      <span class="cat-title">Encriptação de Documentos</span>
+      <span class="cat-desc">Serviços de partilha e armazenamento seguro de ficheiros e documentos.</span>
+      <span class="cat-winner">★ Proton Drive</span>
+    </a>
+  </div>
+  <span class="slide-num">02 / 07</span>
+</section>
+
+<!-- ─── SLIDE 3: C2.PM ─── -->
+<section class="slide" id="pm">
+  <div class="slide-line pm-line"></div>
+  <div class="section-header">
+    <span class="section-code pm-color">C2.PM</span>
+    <span style="color:var(--muted);font-size:12px;">Gestor de Passwords para Mobile e PC</span>
+  </div>
+  <h1 class="slide-title">Gestores de Palavras-passe</h1>
+  <p class="slide-intro">Três soluções multiplataforma avaliadas por criptografia, CIA e custo.</p>
+
+  <div class="apps-grid">
+    <!-- Bitwarden -->
+    <div class="app-card winner">
+      <span class="winner-badge">★ Escolha</span>
+      <div class="app-name">Bitwarden</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256-CBC</code> + <code>HMAC-SHA256</code></span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-OAEP</code> (partilha de cofre)</span></div>
+        <div class="prop"><span class="prop-label">KDF</span><span class="prop-value"><code>PBKDF2</code> / <code>Argon2id</code></span></div>
+        <div class="prop"><span class="prop-label">Modelo</span><span class="prop-value">End-to-End + Zero-Knowledge</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito</span><span class="badge oss">Open Source</span></div>
+    </div>
+
+    <!-- 1Password -->
+    <div class="app-card">
+      <div class="app-name">1Password</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256-GCM</code></span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-OAEP 2048-bit</code></span></div>
+        <div class="prop"><span class="prop-label">KDF</span><span class="prop-value"><code>PBKDF2-HMAC-SHA256</code></span></div>
+        <div class="prop"><span class="prop-label">Extra</span><span class="prop-value">Secret Key 128-bit</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge paid">Pago (14d trial)</span></div>
+    </div>
+
+    <!-- KeePassXC -->
+    <div class="app-card">
+      <div class="app-name">KeePassXC</div>
+      <span class="app-crypto-type">Simétrica</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256-CBC</code> / <code>ChaCha20</code> / Twofish</span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value">Não aplicável (local)</span></div>
+        <div class="prop"><span class="prop-label">KDF</span><span class="prop-value"><code>Argon2id</code></span></div>
+        <div class="prop"><span class="prop-label">Modelo</span><span class="prop-value">Local-First, sem cloud</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent4);">Média/Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito</span><span class="badge oss">Open Source</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:20px 24px;background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.7;">
+    <span style="color:var(--accent);font-weight:600;">▶ Conclusão C2.PM:</span> O <strong style="color:#fff;">Bitwarden</strong> é a melhor opção — equilíbrio entre segurança (E2EE + Zero-Knowledge), open-source, multiplataforma e gratuito com funcionalidades completas.
+  </div>
+  <span class="slide-num">03 / 07</span>
+</section>
+
+<!-- ─── SLIDE 4: C2.SC ─── -->
+<section class="slide" id="sc">
+  <div class="slide-line sc-line"></div>
+  <div class="section-header">
+    <span class="section-code sc-color">C2.SC</span>
+    <span style="color:var(--muted);font-size:12px;">Comunicação Segura — Chat, Voz e Vídeo</span>
+  </div>
+  <h1 class="slide-title">Comunicações Seguras</h1>
+  <p class="slide-intro">Análise de protocolos de cifragem, E2EE e Perfect Forward Secrecy em três plataformas.</p>
+
+  <div class="apps-grid">
+    <!-- Signal -->
+    <div class="app-card winner-purple">
+      <span class="winner-badge purple">★ Escolha</span>
+      <div class="app-name">Signal</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Chaves</span><span class="prop-value"><code>Curve25519</code> (ECC)</span></div>
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256</code></span></div>
+        <div class="prop"><span class="prop-label">Integridade</span><span class="prop-value"><code>HMAC-SHA256</code></span></div>
+        <div class="prop"><span class="prop-label">Protocolos</span><span class="prop-value">Double Ratchet · X3DH</span></div>
+        <div class="prop" style="margin-top:4px;padding-top:10px;border-top:1px solid var(--border);">
+          <span class="prop-label" style="color:#a78bfa;">⚑ Nota — WhatsApp</span>
+          <span class="prop-value" style="color:var(--muted);">O WhatsApp utiliza exactamente a mesma arquitectura criptográfica (Signal Protocol — <code>Curve25519</code> + <code>AES-256</code> + <code>HMAC-SHA256</code>, Double Ratchet, X3DH), mas penalizado pela recolha de metadados pela Meta e por código não auditável.</span>
+        </div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer">
+        <span class="badge free">Gratuito</span>
+        <span class="badge oss">Open Source</span>
+        <span style="font-size:10px;color:#a78bfa;">✔ E2EE · ✔ PFS</span>
+      </div>
+    </div>
+
+    <!-- ProtonMail -->
+    <div class="app-card">
+      <div class="app-name">ProtonMail</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-4096</code> / <code>ECC Curve25519</code></span></div>
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256-GCM</code></span></div>
+        <div class="prop"><span class="prop-label">Protocolo</span><span class="prop-value">OpenPGP</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer">
+        <span class="badge free">Free + Pago</span>
+        <span style="font-size:10px;color:var(--muted);">✔ E2EE (entre Proton) · PFS Parcial</span>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="app-card">
+      <div class="app-name">Telegram</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-2048</code></span></div>
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256-IGE</code></span></div>
+        <div class="prop"><span class="prop-label">Protocolo</span><span class="prop-value">MTProto 2.0</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent4);">Média</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent4);">Média</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer">
+        <span class="badge free">Gratuito</span>
+        <span style="font-size:10px;color:var(--danger);">✘ E2EE por defeito · ✘ PFS</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:20px 24px;background:rgba(124,58,237,.04);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.7;">
+    <span style="color:#a78bfa;font-weight:600;">▶ Conclusão C2.SC:</span> O <strong style="color:#fff;">Signal</strong> destaca-se como a solução mais segura — Double Ratchet + X3DH garantem PFS e E2EE sem recolha de metadados relevantes.
+  </div>
+  <span class="slide-num">04 / 07</span>
+</section>
+
+<!-- ─── SLIDE 5: C2.ID ─── -->
+<section class="slide" id="id">
+  <div class="slide-line id-line"></div>
+  <div class="section-header">
+    <span class="section-code id-color">C2.ID</span>
+    <span style="color:var(--muted);font-size:12px;">Identificação / Autenticação Mobile (2FA / TOTP)</span>
+  </div>
+  <h1 class="slide-title">Aplicações de Autenticação</h1>
+  <p class="slide-intro">Aplicações de autenticação de dois fatores comparadas por modelo criptográfico e sincronização.</p>
+
+  <div class="apps-grid">
+    <!-- Ente Auth -->
+    <div class="app-card winner-green">
+      <span class="winner-badge green">★ Escolha</span>
+      <div class="app-name">Ente Auth</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>XChaCha20-Poly1305</code> (dados em repouso)</span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value">Key Wrapping entre dispositivos (E2EE)</span></div>
+        <div class="prop"><span class="prop-label">Modelo</span><span class="prop-value">Zero-Knowledge · AEAD</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Máxima</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:#34d399;">Poly1305</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito</span><span class="badge oss">Open Source</span></div>
+    </div>
+
+    <!-- Bitwarden Authenticator -->
+    <div class="app-card">
+      <div class="app-name">Bitwarden Auth</div>
+      <span class="app-crypto-type">Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256</code> (cofre)</span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-2048/4096</code> (troca de chaves)</span></div>
+        <div class="prop"><span class="prop-label">Integridade</span><span class="prop-value"><code>SHA-256</code></span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito</span></div>
+    </div>
+
+    <!-- 2FAS -->
+    <div class="app-card">
+      <div class="app-name">2FAS</div>
+      <span class="app-crypto-type">Simétrica + Híbrida</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Backups</span><span class="prop-value"><code>AES-256</code> (simétrica)</span></div>
+        <div class="prop"><span class="prop-label">Browser ↔ App</span><span class="prop-value">Canal efémero assimétrico</span></div>
+        <div class="prop"><span class="prop-label">Foco</span><span class="prop-value">Armazenamento local</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent4);">Média/Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:20px 24px;background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.7;">
+    <span style="color:var(--accent3);font-weight:600;">▶ Conclusão C2.ID:</span> O <strong style="color:#fff;">Ente Auth</strong> é a melhor escolha — XChaCha20-Poly1305 é mais eficiente em mobile do que AES padrão, e o modelo Zero-Knowledge com E2EE entre dispositivos garante máxima confidencialidade.
+  </div>
+  <span class="slide-num">05 / 07</span>
+</section>
+
+<!-- ─── SLIDE 6: C2.EN ─── -->
+<section class="slide" id="en">
+  <div class="slide-line en-line"></div>
+  <div class="section-header">
+    <span class="section-code en-color">C2.EN</span>
+    <span style="color:var(--muted);font-size:12px;">Encriptação e Partilha Segura de Documentos</span>
+  </div>
+  <h1 class="slide-title">Armazenamento Encriptado</h1>
+  <p class="slide-intro">Soluções de armazenamento e partilha de ficheiros com cifragem de ponta-a-ponta. Foram analisadas três alternativas: Cryptomator, Proton Drive e Tresorit.</p>
+
+  <div class="apps-grid">
+    <!-- Cryptomator -->
+    <div class="app-card">
+      <div class="app-name">Cryptomator</div>
+      <span class="app-crypto-type">Simétrica + KDF</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Ficheiros</span><span class="prop-value"><code>AES-256-GCM</code></span></div>
+        <div class="prop"><span class="prop-label">Nomes</span><span class="prop-value"><code>AES-SIV</code></span></div>
+        <div class="prop"><span class="prop-label">KDF</span><span class="prop-value"><code>scrypt</code></span></div>
+        <div class="prop"><span class="prop-label">Integridade</span><span class="prop-value"><code>HMAC-SHA256</code></span></div>
+        <div class="prop"><span class="prop-label">Auditado</span><span class="prop-value">Cure53 (2017)</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">Gratuito (desktop)</span><span class="badge oss">Open Source</span></div>
+    </div>
+
+    <!-- Proton Drive — ESCOLHA PRINCIPAL -->
+    <div class="app-card winner-amber">
+      <span class="winner-badge amber">★ Escolha</span>
+      <div class="app-name">Proton Drive</div>
+      <span class="app-crypto-type">Híbrida (PGP)</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256</code> (blocos de 4 MB)</span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>ECC Curve25519</code> / OpenPGP</span></div>
+        <div class="prop"><span class="prop-label">Assinaturas</span><span class="prop-value"><code>EdDSA</code></span></div>
+        <div class="prop"><span class="prop-label">KDF</span><span class="prop-value"><code>bcrypt</code></span></div>
+        <div class="prop"><span class="prop-label">Integridade</span><span class="prop-value"><code>HMAC-SHA256</code></span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Zero-Knowledge</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">5 GB gratuitos</span><span style="font-size:10px;color:var(--accent4);">200 GB €4/mês · 2 TB €15/mês</span></div>
+    </div>
+
+    <!-- Tresorit -->
+    <div class="app-card">
+      <div class="app-name">Tresorit</div>
+      <span class="app-crypto-type">Híbrida (PKI)</span>
+      <div class="app-props">
+        <div class="prop"><span class="prop-label">Simétrica</span><span class="prop-value"><code>AES-256</code> (por ficheiro)</span></div>
+        <div class="prop"><span class="prop-label">Assimétrica</span><span class="prop-value"><code>RSA-4096 OAEP</code> + PKI</span></div>
+        <div class="prop"><span class="prop-label">Integridade</span><span class="prop-value">HMAC / AEAD</span></div>
+        <div class="prop"><span class="prop-label">Extra</span><span class="prop-value">Criptografia não-convergente</span></div>
+      </div>
+      <div class="cia-row">
+        <div class="cia-item"><div class="cia-letter c-color">C</div><div class="cia-label">Confidencialidade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter i-color">I</div><div class="cia-label">Integridade</div><div class="cia-val" style="color:#34d399;">Muito Alta</div></div>
+        <div class="cia-item"><div class="cia-letter a-color">A</div><div class="cia-label">Disponibilidade</div><div class="cia-val" style="color:var(--accent3);">Alta</div></div>
+      </div>
+      <div class="app-footer"><span class="badge free">3 GB gratuitos</span><span class="badge paid">Empresarial €14.50+/mês</span></div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;padding:20px 24px;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.2);border-radius:10px;font-size:12px;color:var(--muted);line-height:1.7;">
+    <span style="color:var(--accent4);font-weight:600;">▶ Conclusão C2.EN:</span> O <strong style="color:#fff;">Proton Drive</strong> é a escolha principal — ecossistema completo (Mail, VPN, Calendar), criptografia moderna com <code style="color:var(--accent4);">ECC Curve25519</code> e modelo Zero-Knowledge, com preços competitivos e 5 GB gratuitos.
+  </div>
+  <span class="slide-num">06 / 07</span>
+</section>
+
+<!-- ─── SLIDE 7: CONCLUSÃO / SUMÁRIO ─── -->
+<section class="slide" id="conclusao">
+  <div class="grid-bg"></div>
+  <div class="section-header">
+    <span class="section-code" style="background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">SUMÁRIO</span>
+  </div>
+  <h1 class="slide-title">Conclusão Geral</h1>
+  <p class="slide-intro">Todas as soluções selecionadas utilizam criptografia híbrida — assimétrica para troca de chaves, simétrica para cifragem de dados. A tabela abaixo sintetiza as escolhas finais.</p>
+
+  <div class="score-grid">
+    <div class="score-card">
+      <span class="score-cat pm-color">C2.PM</span>
+      <span class="score-app">Bitwarden</span>
+      <span class="score-pct" style="color:var(--accent);">★</span>
+      <span class="score-desc">AES-256-CBC + RSA-OAEP · Zero-Knowledge · Open Source · Gratuito</span>
+    </div>
+    <div class="score-card">
+      <span class="score-cat sc-color">C2.SC</span>
+      <span class="score-app">Signal</span>
+      <span class="score-pct" style="color:#a78bfa;">★</span>
+      <span class="score-desc">Curve25519 + AES-256 · Double Ratchet · X3DH · E2EE + PFS</span>
+    </div>
+    <div class="score-card">
+      <span class="score-cat id-color">C2.ID</span>
+      <span class="score-app">Ente Auth</span>
+      <span class="score-pct" style="color:var(--accent3);">★</span>
+      <span class="score-desc">XChaCha20-Poly1305 · Key Wrapping · Zero-Knowledge · Open Source</span>
+    </div>
+    <div class="score-card">
+      <span class="score-cat en-color">C2.EN</span>
+      <span class="score-app">Proton Drive</span>
+      <span class="score-pct" style="color:var(--accent4);">★</span>
+      <span class="score-desc">ECC Curve25519 · AES-256 · HMAC-SHA256 · Zero-Knowledge · OpenPGP</span>
+    </div>
+  </div>
+
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Categoria</th>
+        <th>Escolha</th>
+        <th>Sim. / Assim.</th>
+        <th>KDF / Protocolo</th>
+        <th>E2EE</th>
+        <th>Custo</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="cat"><span class="dot-winner" style="background:var(--accent)"></span>C2.PM</td>
+        <td style="color:#fff;">Bitwarden</td>
+        <td>AES-256-CBC / RSA-OAEP</td>
+        <td>PBKDF2 / Argon2id</td>
+        <td style="color:var(--accent3);">✔ Sim</td>
+        <td style="color:var(--accent3);">Gratuito</td>
+      </tr>
+      <tr>
+        <td class="cat"><span class="dot-winner" style="background:#7c3aed"></span>C2.SC</td>
+        <td style="color:#fff;">Signal</td>
+        <td>AES-256 / Curve25519</td>
+        <td>Double Ratchet · X3DH</td>
+        <td style="color:var(--accent3);">✔ Sim</td>
+        <td style="color:var(--accent3);">Gratuito</td>
+      </tr>
+      <tr>
+        <td class="cat"><span class="dot-winner" style="background:var(--accent3)"></span>C2.ID</td>
+        <td style="color:#fff;">Ente Auth</td>
+        <td>XChaCha20-Poly1305 / Key Wrap</td>
+        <td>Argon2 / AEAD</td>
+        <td style="color:var(--accent3);">✔ Sim</td>
+        <td style="color:var(--accent3);">Gratuito</td>
+      </tr>
+      <tr>
+        <td class="cat"><span class="dot-winner" style="background:var(--accent4)"></span>C2.EN</td>
+        <td style="color:#fff;">Proton Drive</td>
+        <td>AES-256 / ECC Curve25519</td>
+        <td>OpenPGP · EdDSA</td>
+        <td style="color:var(--accent3);">✔ Sim</td>
+        <td style="color:var(--accent3);">5 GB grátis</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:32px;font-size:11px;color:var(--muted);text-align:center;letter-spacing:1px;">
+    Licenciatura em Segurança Informática em Redes de Computadores · Criptografia Aplicada TP C2 · 2025/2026
+  </div>
+  <span class="slide-num">07 / 07</span>
+</section>
+
+<script>
+  // Nav dot highlight
+  const sections = document.querySelectorAll('.slide');
+  const dots = document.querySelectorAll('#sidenav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        dots.forEach(d => d.classList.remove('active'));
+        const id = e.target.id;
+        const dot = document.querySelector(`#sidenav a[href="#${id}"]`);
+        if (dot) dot.classList.add('active');
+      }
+    });
+  }, { threshold: 0.5 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
