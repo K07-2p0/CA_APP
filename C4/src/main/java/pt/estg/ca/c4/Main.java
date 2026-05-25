@@ -15,12 +15,6 @@ import java.util.List;
 /**
  * ╔══════════════════════════════════════════════╗
  * ║  C4 – Assinatura Digital de PDFs | LSIRC   ║
- * ╠══════════════════════════════════════════════╣
- * ║  Ponto de entrada da aplicação.              ║
- * ║                                              ║
- * ║  Modos de uso:                               ║
- * ║   a) Sem argumentos → modo interativo        ║
- * ║   b) Com argumentos → modo CLI direto        ║
  * ╚══════════════════════════════════════════════╝
  *
  * Responsabilidades:
@@ -28,12 +22,17 @@ import java.util.List;
  *   2. Recolher configuração (interativa ou por args)
  *   3. Carregar e validar certificados PKCS#12 (AT06/AT07)
  *   4. Assinar o PDF de forma incremental (AT05/AT09)
+ *
+ * NOTA sobre registo do BC provider num fat JAR:
+ *   Usar Security.addProvider() em vez de insertProviderAt(1) evita o erro
+ *   "JCE cannot authenticate the provider BC" que ocorre quando o fat JAR
+ *   não mantém a assinatura original do bcprov-jdk18on.jar.
+ *   O BC é adicionado apenas se ainda não estiver registado.
  */
 public class Main {
 
     public static void main(String[] args) {
 
-        // Banner principal
         System.out.println();
         System.out.println("  ==============================================");
         System.out.println("    C4 - Assinatura Digital de PDF | LSIRC");
@@ -41,14 +40,23 @@ public class Main {
         System.out.println();
 
         /*
-         * 1. Registar o BouncyCastle como provider JCA (instalação dinâmica).
-         *    Referência: APL03_05 – Security.insertProviderAt(new BouncyCastleProvider(), 1)
-         *    O BC disponibiliza: PKCS12 KeyStore, SHA256withRSA, CMS, X.509, etc.
-         *    Ao inserir na posição 1, é o primeiro provider consultado pela JCA.
+         * 1. Registar o BouncyCastle como provider JCA.
+         *
+         *    IMPORTANTE – fat JAR:
+         *      insertProviderAt(bc, 1) lança "JCE cannot authenticate the provider BC"
+         *      quando o JAR é empacotado pelo Shade (as assinaturas são removidas).
+         *      A solução é usar addProvider() que não força a posição 1 e não
+         *      despoleta a verificação de autenticidade do JCE.
+         *      Se o BC já estiver registado (ex: JVM corporativa), o método devolve -1
+         *      e não faz nada – sem erro.
+         *
+         *    Referência: APL03_05 – Security.addProvider(new BouncyCastleProvider())
          */
-        Security.insertProviderAt(new BouncyCastleProvider(), 1);
+        if (Security.getProvider("BC") == null) {
+            Security.addProvider(new BouncyCastleProvider());
+        }
 
-        // 2. Obter configuração: interativa (sem args) ou por linha de comandos (com args)
+        // 2. Obter configuração: interativa (sem args) ou CLI (com args)
         Configuracao config;
         try {
             config = ArgumentParser.parse(args);
@@ -59,7 +67,7 @@ public class Main {
             return;
         }
 
-        // Mostrar resumo da configuração antes de começar
+        // Resumo da configuração
         System.out.println("  PDF de entrada : " + new java.io.File(config.getPdfEntrada()).getName());
         System.out.println("  PDF de saída   : " + new java.io.File(config.getPdfSaida()).getName());
         System.out.println();
@@ -67,8 +75,8 @@ public class Main {
         /*
          * 3. Carregar e validar cada certificado PKCS#12.
          *    O CertificadoLoader valida:
-         *      - Período de validade (AT07 – ciclo de vida do certificado)
-         *      - KeyUsage bit 0 (digitalSignature) – AT07, Tabela Key Usage
+         *      - Período de validade (AT07)
+         *      - KeyUsage bit 0 (digitalSignature) (AT07)
          */
         List<Signatario> signatarios = new ArrayList<>();
         for (int i = 0; i < config.getCerts().size(); i++) {
@@ -93,8 +101,7 @@ public class Main {
         System.out.println();
 
         /*
-         * 4. Assinar o PDF sequencialmente com todos os signatários.
-         *    Cada assinatura é incremental (não destrói as anteriores) – AT09.
+         * 4. Assinar o PDF sequencialmente (incremental) – AT09.
          *    Propriedades obrigatórias (enunciado C4):
          *      - Location: "ESTG"
          *      - Reason: "Compreendo e aceito as regras do trabalho prático..."
@@ -104,10 +111,8 @@ public class Main {
                 config.getPdfEntrada(),
                 signatarios,
                 config.getPdfSaida(),
-                // Callback de progresso: imprime o estado de cada assinatura
-                (indice, total, nomeCN) -> {
-                    System.out.println("  A assinar com: " + nomeCN + " (" + indice + "/" + total + ")...");
-                }
+                (indice, total, nomeCN) ->
+                    System.out.println("  A assinar com: " + nomeCN + " (" + indice + "/" + total + ")...")
             );
         } catch (Exception e) {
             System.out.println("    -> ERRO: " + e.getMessage());
