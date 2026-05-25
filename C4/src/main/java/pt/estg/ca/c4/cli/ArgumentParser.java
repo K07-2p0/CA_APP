@@ -17,7 +17,7 @@ import java.util.Scanner;
  *      Menu passo a passo no terminal:
  *        - Lista os .p12 encontrados em certs/
  *        - Pergunta o caminho do PDF de entrada
- *        - Pergunta o PDF de saída (ou usa o default)
+ *        - Pergunta o PDF de saída (ou usa o default: mesma pasta do PDF)
  *        - Pergunta a Razão e Localização (ou usa os defaults do enunciado)
  *        - Pede a password de cada .p12 sem eco
  *
@@ -84,19 +84,32 @@ public class ArgumentParser {
             System.out.println();
         }
 
-        // --- PDF de entrada ---
-        String pdfEntradaStr = pedirCaminhoPdf(sc,
+        /*
+         * --- PDF de entrada ---
+         * pedirCaminhoPdf devolve já o File absoluto e canónico resolvido,
+         * garantindo que getParentFile() aponta sempre para a pasta real do PDF
+         * e não para a pasta de trabalho da app.
+         */
+        File ficheiroPdf = pedirCaminhoPdf(sc,
             "  PDF de entrada (caminho completo ou nome na pasta atual): ");
-        // Remover aspas que o Windows por vezes cola automaticamente
-        pdfEntradaStr = pdfEntradaStr.replace("\"", "").trim();
-        File ficheiroPdf = resolverFicheiro(pdfEntradaStr);
 
-        // --- PDF de saída ---
-        String nomeDefault = ficheiroPdf.getName().replaceFirst("\\.pdf$", "") + "_assinado.pdf";
-        String pdfSaidaDefault = new File(ficheiroPdf.getParent(), nomeDefault).getAbsolutePath();
+        // --- PDF de saída: SEMPRE na mesma pasta do PDF de entrada ---
+        String nomeDefault = ficheiroPdf.getName().replaceFirst("\\.(?i)pdf$", "") + "_assinado.pdf";
+        File pastaPdf = ficheiroPdf.getParentFile();  // pasta canónica do PDF original
+        String pdfSaidaDefault = new File(pastaPdf, nomeDefault).getAbsolutePath();
+
         System.out.print("  PDF de saída   [" + nomeDefault + "]: ");
-        String pdfSaidaInput = sc.nextLine().trim();
-        String pdfSaida = pdfSaidaInput.isEmpty() ? pdfSaidaDefault : pdfSaidaInput;
+        String pdfSaidaInput = sc.nextLine().trim().replace("\"", "");
+        // Se o utilizador escrever apenas um nome (sem pasta), coloca na mesma pasta do PDF
+        String pdfSaida;
+        if (pdfSaidaInput.isEmpty()) {
+            pdfSaida = pdfSaidaDefault;
+        } else {
+            File fSaida = new File(pdfSaidaInput);
+            pdfSaida = fSaida.isAbsolute()
+                ? pdfSaidaInput
+                : new File(pastaPdf, pdfSaidaInput).getAbsolutePath();
+        }
         System.out.println();
 
         // --- Razão da assinatura ---
@@ -185,7 +198,6 @@ public class ArgumentParser {
         if (certs.isEmpty())
             throw new IllegalArgumentException("É obrigatório indicar pelo menos um certificado com --cert <nome.p12>.");
 
-        // Remover aspas que o Windows por vezes cola automaticamente
         pdfEntrada = pdfEntrada.replace("\"", "").trim();
 
         File ficheiroPdf = resolverFicheiro(pdfEntrada);
@@ -201,8 +213,9 @@ public class ArgumentParser {
         }
 
         if (pdfSaida == null) {
-            String nomeBase = ficheiroPdf.getName().replaceFirst("\\.pdf$", "");
-            pdfSaida = new File(ficheiroPdf.getParent(), nomeBase + "_assinado.pdf").getAbsolutePath();
+            String nomeBase = ficheiroPdf.getName().replaceFirst("\\.(?i)pdf$", "");
+            // PDF de saída sempre na mesma pasta do PDF de entrada
+            pdfSaida = new File(ficheiroPdf.getParentFile(), nomeBase + "_assinado.pdf").getAbsolutePath();
         }
 
         List<char[]> passwords = new ArrayList<>();
@@ -225,13 +238,27 @@ public class ArgumentParser {
     // UTILITÁRIOS
     // =========================================================================
 
-    private static String pedirCaminhoPdf(Scanner sc, String prompt) {
+    /**
+     * Pede o caminho do PDF interativamente e devolve o File já resolvido
+     * para caminho absoluto e canónico.
+     *
+     * Devolver o File resolvido (e não a String digitada) garante que
+     * getParentFile() aponta sempre para a pasta real do PDF, independentemente
+     * de o utilizador ter colado um caminho absoluto, relativo, ou com aspas.
+     */
+    private static File pedirCaminhoPdf(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
             String entrada = sc.nextLine().trim().replace("\"", "");
             if (entrada.isEmpty()) continue;
             File f = resolverFicheiroOuNull(entrada);
-            if (f != null) return entrada;
+            if (f != null) {
+                try {
+                    return f.getCanonicalFile(); // resolve symlinks e . / ..
+                } catch (Exception e) {
+                    return f.getAbsoluteFile();
+                }
+            }
             System.out.println("    -> Ficheiro não encontrado: " + entrada + ". Tente novamente.");
         }
     }
@@ -240,7 +267,7 @@ public class ArgumentParser {
         File f = resolverFicheiroOuNull(caminho);
         if (f == null)
             throw new IllegalArgumentException("Ficheiro não encontrado: " + caminho);
-        return f;
+        try { return f.getCanonicalFile(); } catch (Exception e) { return f.getAbsoluteFile(); }
     }
 
     private static File resolverFicheiroOuNull(String caminho) {
@@ -285,7 +312,7 @@ public class ArgumentParser {
         System.out.println();
         System.out.println("  --pdf       <caminho>    PDF a assinar");
         System.out.println("  --cert      <nome.p12>   Certificado .p12 (repetir para múltiplos)");
-        System.out.println("  --out       <saida.pdf>  PDF de saída (default: <original>_assinado.pdf)");
+        System.out.println("  --out       <saida.pdf>  PDF de saída (default: mesma pasta do PDF)");
         System.out.println("  --reason    <texto>      Razão da assinatura (default: texto do enunciado)");
         System.out.println("  --location  <texto>      Localização (default: ESTG)");
         System.out.println("  --pass      <password>   Password do .p12 (default: pedida interativamente)");
