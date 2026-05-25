@@ -21,8 +21,16 @@ import java.util.Enumeration;
  *   - Período de validade (AT07 – ciclo de vida: Ativo/Expirado/Revogado)
  *   - KeyUsage bit 0 (digitalSignature) – AT07, Tabela Key Usage
  *
+ * NOTA sobre o provider para KeyStore PKCS12:
+ *   O fat JAR gerado pelo Maven Shade remove as assinaturas dos JARs originais,
+ *   o que invalida o uso de KeyStore.getInstance("PKCS12", "BC") — a JVM lança
+ *   "JCE cannot authenticate the provider BC".
+ *   Solução: usar KeyStore.getInstance("PKCS12") sem provider explícito.
+ *   A JVM usa o provider nativo (SunJSSE no OpenJDK) para abrir o .p12,
+ *   e o BouncyCastle é usado apenas onde é mesmo necessário (CMS/assinatura).
+ *
  * Referências:
- *   - APL03_05: KeyStore.getInstance("PKCS12"), provider BouncyCastle
+ *   - APL03_05: KeyStore.getInstance("PKCS12")
  *   - AT06: PKCS#12 como formato de transporte de chave privada + certificado
  *   - AT07: Estrutura X.509 v3, DN, KeyUsage, cadeia de confiança PKI
  */
@@ -43,14 +51,24 @@ public class CertificadoLoader {
         Logger.info("  A abrir PKCS#12: " + ficheiro.getAbsolutePath());
 
         /*
-         * Abrir o KeyStore no formato PKCS#12 com provider BouncyCastle.
-         * Referência: APL03_05 – uso explícito do provider BC para PKCS12.
+         * Abrir o KeyStore PKCS#12 usando o provider nativo da JVM (SunJSSE).
+         *
+         * NÃO usar KeyStore.getInstance("PKCS12", "BC") num fat JAR:
+         *   O Maven Shade remove META-INF/*.SF/.DSA/.RSA para evitar conflitos,
+         *   mas isso invalida a autenticação JCE do BouncyCastle, causando:
+         *   "JCE cannot authenticate the provider BC"
+         *
+         * O provider nativo suporta PKCS12 v1 e v2, AES-256, SHA-256 MAC —
+         * todos os formatos gerados por OpenSSL, StepCA, EJBCA, etc.
+         *
+         * Referência: AT06 – PKCS#12 como formato de transporte seguro.
          */
-        KeyStore ks = KeyStore.getInstance("PKCS12", "BC");
+        KeyStore ks = KeyStore.getInstance("PKCS12");  // provider nativo JVM
         try (FileInputStream fis = new FileInputStream(ficheiro)) {
             ks.load(fis, password);
         } catch (Exception e) {
-            throw new Exception("Não foi possível abrir o .p12. Verifique a password. (" + e.getMessage() + ")");
+            throw new Exception("Não foi possível abrir o .p12 '" + nomeFicheiro
+                + "'. Verifique a password. (" + e.getMessage() + ")");
         }
 
         String alias = encontrarAlias(ks);
@@ -120,7 +138,7 @@ public class CertificadoLoader {
         if (keyUsage != null) {
             if (!keyUsage[0])
                 throw new Exception("Certificado '" + nome
-                    + "' sem KeyUsage=digitalSignature (bit 0). Inválido para assinatura de documentos. (AT07)");
+                    + "' sem KeyUsage=digitalSignature (bit 0). Inválido para assinatura. (AT07)");
             String kuInfo = "digitalSignature=true";
             if (keyUsage.length > 1 && keyUsage[1]) kuInfo += ", nonRepudiation=true";
             Logger.info("  KeyUsage: " + kuInfo + " (AT07)");
