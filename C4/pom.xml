@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>pt.estg.ca</groupId>
+  <artifactId>c4-assinar-pdf</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>C4 – Assinatura Digital de PDFs</name>
+  <description>
+    Aplicação em linha de comandos para assinar digitalmente PDFs com
+    certificados PKCS#12 (X.509 v3), usando PDFBox + BouncyCastle.
+    Desenvolvida no âmbito do C4 de Criptografia Aplicada – LSIRC ESTG 2026.
+  </description>
+
+  <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <pdfbox.version>3.0.2</pdfbox.version>
+    <bouncycastle.version>1.78.1</bouncycastle.version>
+  </properties>
+
+  <dependencies>
+
+    <!--
+      Apache PDFBox 3.x
+      Biblioteca principal para leitura, escrita e assinatura de PDFs.
+      https://pdfbox.apache.org/
+      (AT09 – Assinatura de documentos: assinatura embebida/interna)
+    -->
+    <dependency>
+      <groupId>org.apache.pdfbox</groupId>
+      <artifactId>pdfbox</artifactId>
+      <version>${pdfbox.version}</version>
+    </dependency>
+
+    <!--
+      BouncyCastle PKIX/CMS/TSP/PKCS
+      Necessário para construir o CMSSignedData que o PDFBox embebe no PDF.
+      Recomendado nas aulas (APL03_05) como provider criptográfico de referência.
+    -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+
+    <!--
+      BouncyCastle Provider
+      Implementa a JCA/JCE – necessário para SHA256withRSA, PKCS12, etc.
+      (APL03_05 – instalação dinâmica: Security.addProvider(new BouncyCastleProvider()))
+    -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+
+      <!--
+        Maven Shade Plugin
+        Gera um "fat JAR" (JAR executável com todas as dependências incluídas),
+        tornando a aplicação portável em qualquer máquina com Java 11+,
+        independentemente do sistema operativo (Windows, macOS, Linux).
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.5.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals><goal>shade</goal></goals>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>pt.estg.ca.c4.Main</mainClass>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+    </plugins>
+  </build>
+
+</project>

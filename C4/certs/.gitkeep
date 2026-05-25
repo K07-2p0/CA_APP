@@ -1,0 +1,4 @@
+# Pasta para os ficheiros .p12 de cada elemento do grupo.
+# Os ficheiros .p12 contêm a chave privada e o certificado X.509 v3.
+# NAO adicionar ficheiros .p12 ao repositório (dados sensíveis)!
+# Adicionar ao .gitignore: certs/*.p12
