@@ -10,13 +10,13 @@ import java.util.List;
  */
 public class Configuracao {
 
-    /** Caminho absoluto ou relativo para o PDF de entrada (pode estar em qualquer local da máquina). */
+    /** Caminho absoluto para o PDF de entrada. */
     private final String pdfEntrada;
 
     /** Caminho para o PDF de saída (por omissão: <nome_original>_assinado.pdf). */
     private final String pdfSaida;
 
-    /** Caminho para a pasta certs/ (relativa ao JAR ou absoluta). */
+    /** Caminho para a pasta certs/. */
     private final String pastasCerts;
 
     /** Nomes dos ficheiros .p12 dentro de certs/ (um por signatário). */
@@ -24,22 +24,40 @@ public class Configuracao {
 
     /**
      * Passwords de cada .p12, na mesma ordem que certs.
-     * Podem ter sido fornecidas via --pass ou lidas interativamente sem eco.
+     * Lidas interativamente sem eco (Console.readPassword) ou via --pass.
      */
     private final List<char[]> passwords;
 
+    /**
+     * Localização embebida na assinatura PDF (enunciado C4: "ESTG").
+     * Configurável via --location ou pedida interativamente.
+     */
+    private final String location;
+
+    /**
+     * Razão embebida na assinatura PDF.
+     * Configurável via --reason ou pedida interativamente.
+     * Default: texto obrigatório do enunciado C4.
+     */
+    private final String reason;
+
     public Configuracao(String pdfEntrada, String pdfSaida, String pastasCerts,
-                        List<String> certs, List<char[]> passwords) {
+                        List<String> certs, List<char[]> passwords,
+                        String location, String reason) {
         this.pdfEntrada  = pdfEntrada;
         this.pdfSaida    = pdfSaida;
         this.pastasCerts = pastasCerts;
         this.certs       = certs;
         this.passwords   = passwords;
+        this.location    = location;
+        this.reason      = reason;
     }
 
-    public String getPdfEntrada()   { return pdfEntrada; }
-    public String getPdfSaida()     { return pdfSaida; }
-    public String getPastasCerts()  { return pastasCerts; }
-    public List<String> getCerts()  { return certs; }
+    public String getPdfEntrada()      { return pdfEntrada; }
+    public String getPdfSaida()        { return pdfSaida; }
+    public String getPastasCerts()     { return pastasCerts; }
+    public List<String> getCerts()     { return certs; }
     public List<char[]> getPasswords() { return passwords; }
+    public String getLocation()        { return location; }
+    public String getReason()          { return reason; }
 }

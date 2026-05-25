@@ -26,32 +26,21 @@ import java.util.*;
  * Fluxo técnico para cada signatário:
  *   1. PDFBox abre o documento e reserva espaço para a assinatura
  *   2. BouncyCastle constrói o CMS SignedData (RFC 5652):
- *        - Digest: SHA-256 (AT05 – SHA-2 recomendado; MD5/SHA-1 PROIBIDOS)
+ *        - Digest: SHA-256 (AT05)
  *        - Assinatura: SHA256withRSA (AT05)
  *        - Certificado + cadeia PKI incluídos no CMS (AT07)
- *   3. O CMS SignedData é embebido no PDF (assinatura interna – AT09)
- *   4. Assinatura incremental: não invalida assinaturas anteriores (AT09)
+ *   3. O CMS SignedData é embebido no PDF (AT09)
+ *   4. Assinatura incremental: não invalida anteriores (AT09)
  *
- * Propriedades obrigatórias (enunciado C4):
- *   - Location: "ESTG"
- *   - Reason:   "Compreendo e aceito as regras do trabalho prático..."
- *   - Name:     CN do certificado (número de aluno)
- *
- * PDFBox 3.x:
- *   - Loader.loadPDF(File) substitui PDDocument.load(File)
- *   - FILTER_ADOBE_PPKLITE substitui FILTER_ADOBE_PPK_LITE
+ * Propriedades da assinatura configuráveis:
+ *   - Location:  via Configuracao.getLocation()  (default: "ESTG")
+ *   - Reason:    via Configuracao.getReason()    (default: texto do enunciado C4)
+ *   - Name:      CN do certificado (número de aluno)
  */
 public class AssinadorPDF {
 
-    private static final String RAZAO =
-        "Compreendo e aceito as regras do trabalho pratico e eventuais " +
-        "alteracoes pontuais que sejam introduzidas.";
-
-    private static final String LOCAL = "ESTG";
-
     /**
      * Interface funcional para reportar o progresso de cada assinatura.
-     * Permite ao Main.java mostrar feedback visual sem acoplar as classes.
      */
     @FunctionalInterface
     public interface ProgressoCallback {
@@ -62,15 +51,17 @@ public class AssinadorPDF {
      * Assina o PDF sequencialmente com todos os signatários (incremental).
      *
      * @param caminhoEntrada  PDF de entrada
-     * @param signatarios     Lista de signatários carregados de certs/
-     * @param caminhoSaida    PDF de saída com todas as assinaturas
-     * @param progresso       Callback chamado antes de cada assinatura
+     * @param signatarios     Lista de signatários
+     * @param caminhoSaida    PDF de saída
+     * @param location        Localização embebida na assinatura
+     * @param reason          Razão embebida na assinatura
+     * @param progresso       Callback de progresso (pode ser null)
      */
     public static void assinar(String caminhoEntrada, List<Signatario> signatarios,
-                               String caminhoSaida, ProgressoCallback progresso)
+                               String caminhoSaida, String location, String reason,
+                               ProgressoCallback progresso)
             throws Exception {
 
-        // Cada signatário lê o resultado do anterior → assinaturas incrementais (AT09)
         String ficheiroCorrente = caminhoEntrada;
 
         for (int i = 0; i < signatarios.size(); i++) {
@@ -80,13 +71,12 @@ public class AssinadorPDF {
                 ? caminhoSaida
                 : caminhoEntrada + ".tmp_sig" + i + ".pdf";
 
-            // Notificar o chamador do progresso
-            if (progresso != null) progresso.onAssinatura(i + 1, signatarios.size(), s.getNomeCN());
+            if (progresso != null)
+                progresso.onAssinatura(i + 1, signatarios.size(), s.getNomeCN());
 
-            aplicarAssinatura(ficheiroCorrente, s, ficheiroDestino);
+            aplicarAssinatura(ficheiroCorrente, s, ficheiroDestino, location, reason);
             System.out.println("    -> OK");
 
-            // Limpar ficheiros temporários intermediários
             if (i > 0 && !ficheiroCorrente.equals(caminhoEntrada))
                 new File(ficheiroCorrente).delete();
             ficheiroCorrente = ficheiroDestino;
@@ -95,23 +85,20 @@ public class AssinadorPDF {
 
     /**
      * Aplica uma única assinatura digital incremental ao PDF.
-     *
-     * PDFBox 3.x:
-     *   - Loader.loadPDF(File) em vez de PDDocument.load(File)
-     *   - FILTER_ADOBE_PPKLITE em vez de FILTER_ADOBE_PPK_LITE
      */
-    private static void aplicarAssinatura(String entrada, Signatario signatario, String saida)
+    private static void aplicarAssinatura(String entrada, Signatario signatario,
+                                          String saida, String location, String reason)
             throws Exception {
 
         try (PDDocument doc = Loader.loadPDF(new File(entrada));
              FileOutputStream fos = new FileOutputStream(saida)) {
 
             PDSignature pdSignature = new PDSignature();
-            pdSignature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);           // PDFBox 3.x
+            pdSignature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
             pdSignature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
-            pdSignature.setName(signatario.getNomeCN());   // CN = nº aluno (AT07)
-            pdSignature.setLocation(LOCAL);                // Obrigatório: "ESTG"
-            pdSignature.setReason(RAZAO);                  // Obrigatório: conforme enunciado
+            pdSignature.setName(signatario.getNomeCN());
+            pdSignature.setLocation(location);   // configurável
+            pdSignature.setReason(reason);        // configurável
             pdSignature.setSignDate(Calendar.getInstance());
 
             SignatureOptions opcoes = new SignatureOptions();
@@ -125,18 +112,16 @@ public class AssinadorPDF {
                 }
             }, opcoes);
 
-            // Guardar com atualização incremental – preserva assinaturas anteriores (AT09)
             doc.saveIncremental(fos);
         }
     }
 
     /**
-     * Constrói o CMS SignedData (RFC 5652) que encapsula a assinatura digital.
-     *
-     * - SHA-256: função de hash segura (AT05 – SHA-2, NIST 2002)
-     * - SHA256withRSA: algoritmo de assinatura (AT04/AT05)
-     * - Provider "BC": BouncyCastle explícito (APL03_05)
-     * - Cadeia PKI completa incluída (AT07)
+     * Constrói o CMS SignedData (RFC 5652).
+     *   - SHA-256 (AT05)
+     *   - SHA256withRSA (AT04/AT05)
+     *   - Provider BC explícito (APL03_05)
+     *   - Cadeia PKI completa (AT07)
      */
     private static byte[] construirCMSSignedData(InputStream conteudo, Signatario signatario)
             throws Exception {
@@ -154,7 +139,6 @@ public class AssinadorPDF {
             ).build(contentSigner, signatario.getCertificado())
         );
 
-        // Incluir cadeia PKI: cert_aluno → SubCA Grupo XX → LSIRC Root CA 2026 (AT07)
         List<Certificate> listaCadeia = Arrays.asList(signatario.getCadeia());
         generator.addCertificates(new JcaCertStore(listaCadeia));
 

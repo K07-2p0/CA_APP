@@ -13,21 +13,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ╔══════════════════════════════════════════════╗
- * ║  C4 – Assinatura Digital de PDFs | LSIRC   ║
- * ╚══════════════════════════════════════════════╝
+ * Ponto de entrada da aplicação C4 – Assinatura Digital de PDFs.
  *
  * Responsabilidades:
  *   1. Registar o provider BouncyCastle na JCA (APL03_05)
- *   2. Recolher configuração (interativa ou por args)
+ *   2. Recolher configuração (interativa ou CLI)
  *   3. Carregar e validar certificados PKCS#12 (AT06/AT07)
  *   4. Assinar o PDF de forma incremental (AT05/AT09)
- *
- * NOTA sobre registo do BC provider num fat JAR:
- *   Usar Security.addProvider() em vez de insertProviderAt(1) evita o erro
- *   "JCE cannot authenticate the provider BC" que ocorre quando o fat JAR
- *   não mantém a assinatura original do bcprov-jdk18on.jar.
- *   O BC é adicionado apenas se ainda não estiver registado.
  */
 public class Main {
 
@@ -40,23 +32,16 @@ public class Main {
         System.out.println();
 
         /*
-         * 1. Registar o BouncyCastle como provider JCA.
-         *
-         *    IMPORTANTE – fat JAR:
-         *      insertProviderAt(bc, 1) lança "JCE cannot authenticate the provider BC"
-         *      quando o JAR é empacotado pelo Shade (as assinaturas são removidas).
-         *      A solução é usar addProvider() que não força a posição 1 e não
-         *      despoleta a verificação de autenticidade do JCE.
-         *      Se o BC já estiver registado (ex: JVM corporativa), o método devolve -1
-         *      e não faz nada – sem erro.
-         *
-         *    Referência: APL03_05 – Security.addProvider(new BouncyCastleProvider())
+         * 1. Registar BouncyCastle como provider JCA.
+         *    Usar addProvider() em vez de insertProviderAt(bc,1) evita
+         *    "JCE cannot authenticate the provider BC" no fat JAR
+         *    (o Shade remove as assinaturas originais do bcprov-jdk18on.jar).
          */
         if (Security.getProvider("BC") == null) {
             Security.addProvider(new BouncyCastleProvider());
         }
 
-        // 2. Obter configuração: interativa (sem args) ou CLI (com args)
+        // 2. Obter configuração
         Configuracao config;
         try {
             config = ArgumentParser.parse(args);
@@ -67,17 +52,14 @@ public class Main {
             return;
         }
 
-        // Resumo da configuração
+        // Resumo
         System.out.println("  PDF de entrada : " + new java.io.File(config.getPdfEntrada()).getName());
         System.out.println("  PDF de saída   : " + new java.io.File(config.getPdfSaida()).getName());
+        System.out.println("  Razão           : " + config.getReason());
+        System.out.println("  Localização     : " + config.getLocation());
         System.out.println();
 
-        /*
-         * 3. Carregar e validar cada certificado PKCS#12.
-         *    O CertificadoLoader valida:
-         *      - Período de validade (AT07)
-         *      - KeyUsage bit 0 (digitalSignature) (AT07)
-         */
+        // 3. Carregar certificados
         List<Signatario> signatarios = new ArrayList<>();
         for (int i = 0; i < config.getCerts().size(); i++) {
             String nomeCert = config.getCerts().get(i);
@@ -100,17 +82,14 @@ public class Main {
         System.out.println("  " + signatarios.size() + " certificado(s) carregado(s).");
         System.out.println();
 
-        /*
-         * 4. Assinar o PDF sequencialmente (incremental) – AT09.
-         *    Propriedades obrigatórias (enunciado C4):
-         *      - Location: "ESTG"
-         *      - Reason: "Compreendo e aceito as regras do trabalho prático..."
-         */
+        // 4. Assinar
         try {
             AssinadorPDF.assinar(
                 config.getPdfEntrada(),
                 signatarios,
                 config.getPdfSaida(),
+                config.getLocation(),
+                config.getReason(),
                 (indice, total, nomeCN) ->
                     System.out.println("  A assinar com: " + nomeCN + " (" + indice + "/" + total + ")...")
             );
@@ -120,7 +99,6 @@ public class Main {
             System.exit(3);
         }
 
-        // Conclusão
         System.out.println();
         System.out.println("  ==============================================");
         System.out.println("    Concluído! PDF guardado em: "
