@@ -1,0 +1,78 @@
+# ============================================================
+# Java / Maven
+# ============================================================
+# Binários compilados e JARs gerados pelo Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven wrapper cache (se usarem mvnw)
+.mvn/wrapper/maven-wrapper.jar
+
+# ============================================================
+# Certificados e chaves privadas
+# ============================================================
+# Os .p12 ficam na pasta certs/ mas NÃO devem ir para o git
+# (contêm chaves privadas). Se quiserem versionar apenas
+# o placeholder da pasta, criem um certs/.gitkeep.
+certs/*.p12
+
+# ============================================================
+# IDEs — VS Code
+# ============================================================
+.vscode/
+*.code-workspace
+
+# ============================================================
+# IDEs — IntelliJ IDEA
+# ============================================================
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# ============================================================
+# IDEs — Eclipse
+# ============================================================
+.classpath
+.project
+.settings/
+bin/
+
+# ============================================================
+# IDEs — NetBeans
+# ============================================================
+nbproject/private/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ============================================================
+# Sistema Operativo
+# ============================================================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ============================================================
+# Logs e ficheiros temporários
+# ============================================================
+*.log
+*.tmp
+*.temp
+*.swp
+*.bak
