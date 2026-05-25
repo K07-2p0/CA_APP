@@ -18,7 +18,7 @@ import java.util.Scanner;
  *        - Lista os .p12 encontrados em certs/
  *        - Pergunta o caminho do PDF de entrada
  *        - Pergunta o PDF de saída (ou usa o default: mesma pasta do PDF)
- *        - Pergunta a Razão e Localização (ou usa os defaults do enunciado)
+ *        - Pergunta a Razão (ou usa o default do enunciado)
  *        - Pede a password de cada .p12 sem eco
  *
  *   B) MODO CLI (com argumentos)
@@ -27,9 +27,10 @@ import java.util.Scanner;
  *        --cert     <nome.p12>  .p12 em certs/ (pode repetir)
  *        --out      <saida.pdf> PDF de saída (opcional)
  *        --reason   <texto>     Razão da assinatura (opcional)
- *        --location <texto>     Localização da assinatura (opcional)
  *        --pass     <password>  Password (opcional; pede interativamente se omitida)
  *        --certs-dir <pasta>    Pasta com os .p12 (opcional; default: ./certs)
+ *
+ * Nota: a localização é sempre "ESTG" (LOCATION_DEFAULT) e não é configurável.
  *
  * Segurança:
  *   Passwords lidas com Console.readPassword() – sem eco no terminal.
@@ -42,7 +43,7 @@ public class ArgumentParser {
         "Compreendo e aceito as regras do trabalho pratico e eventuais " +
         "alteracoes pontuais que sejam introduzidas.";
 
-    /** Localização default conforme exigido pelo enunciado C4. */
+    /** Localização fixa conforme exigido pelo enunciado C4. Não é configurável. */
     public static final String LOCATION_DEFAULT = "ESTG";
 
     /**
@@ -84,23 +85,17 @@ public class ArgumentParser {
             System.out.println();
         }
 
-        /*
-         * --- PDF de entrada ---
-         * pedirCaminhoPdf devolve já o File absoluto e canónico resolvido,
-         * garantindo que getParentFile() aponta sempre para a pasta real do PDF
-         * e não para a pasta de trabalho da app.
-         */
+        // --- PDF de entrada ---
         File ficheiroPdf = pedirCaminhoPdf(sc,
             "  PDF de entrada (caminho completo ou nome na pasta atual): ");
 
         // --- PDF de saída: SEMPRE na mesma pasta do PDF de entrada ---
         String nomeDefault = ficheiroPdf.getName().replaceFirst("\\.(?i)pdf$", "") + "_assinado.pdf";
-        File pastaPdf = ficheiroPdf.getParentFile();  // pasta canónica do PDF original
+        File pastaPdf = ficheiroPdf.getParentFile();
         String pdfSaidaDefault = new File(pastaPdf, nomeDefault).getAbsolutePath();
 
         System.out.print("  PDF de saída   [" + nomeDefault + "]: ");
         String pdfSaidaInput = sc.nextLine().trim().replace("\"", "");
-        // Se o utilizador escrever apenas um nome (sem pasta), coloca na mesma pasta do PDF
         String pdfSaida;
         if (pdfSaidaInput.isEmpty()) {
             pdfSaida = pdfSaidaDefault;
@@ -119,12 +114,6 @@ public class ArgumentParser {
         System.out.print("  Razão: ");
         String reasonInput = sc.nextLine().trim();
         String reason = reasonInput.isEmpty() ? REASON_DEFAULT : reasonInput;
-        System.out.println();
-
-        // --- Localização da assinatura ---
-        System.out.print("  Localização [" + LOCATION_DEFAULT + "]: ");
-        String locationInput = sc.nextLine().trim();
-        String location = locationInput.isEmpty() ? LOCATION_DEFAULT : locationInput;
         System.out.println();
 
         // --- Selecionar certificados ---
@@ -160,7 +149,7 @@ public class ArgumentParser {
         return new Configuracao(
             ficheiroPdf.getAbsolutePath(), pdfSaida,
             pastaCerts.getAbsolutePath(), certsSelecionados, passwords,
-            location, reason
+            LOCATION_DEFAULT, reason
         );
     }
 
@@ -173,7 +162,6 @@ public class ArgumentParser {
         String pdfSaida   = null;
         String certsDir   = resolverPastaDefaultCerts();
         String reason     = REASON_DEFAULT;
-        String location   = LOCATION_DEFAULT;
         List<String> certs       = new ArrayList<>();
         List<String> passesBruto = new ArrayList<>();
 
@@ -185,7 +173,6 @@ public class ArgumentParser {
                 case "--pass":      passesBruto.add(args[++i]); break;
                 case "--certs-dir": certsDir = args[++i]; break;
                 case "--reason":    reason = args[++i]; break;
-                case "--location":  location = args[++i]; break;
                 case "--help":
                 case "-h":          imprimirAjuda(); System.exit(0); break;
                 default:
@@ -214,7 +201,6 @@ public class ArgumentParser {
 
         if (pdfSaida == null) {
             String nomeBase = ficheiroPdf.getName().replaceFirst("\\.(?i)pdf$", "");
-            // PDF de saída sempre na mesma pasta do PDF de entrada
             pdfSaida = new File(ficheiroPdf.getParentFile(), nomeBase + "_assinado.pdf").getAbsolutePath();
         }
 
@@ -230,7 +216,7 @@ public class ArgumentParser {
         return new Configuracao(
             ficheiroPdf.getAbsolutePath(), pdfSaida,
             pastaCerts.getAbsolutePath(), certs, passwords,
-            location, reason
+            LOCATION_DEFAULT, reason
         );
     }
 
@@ -238,14 +224,6 @@ public class ArgumentParser {
     // UTILITÁRIOS
     // =========================================================================
 
-    /**
-     * Pede o caminho do PDF interativamente e devolve o File já resolvido
-     * para caminho absoluto e canónico.
-     *
-     * Devolver o File resolvido (e não a String digitada) garante que
-     * getParentFile() aponta sempre para a pasta real do PDF, independentemente
-     * de o utilizador ter colado um caminho absoluto, relativo, ou com aspas.
-     */
     private static File pedirCaminhoPdf(Scanner sc, String prompt) {
         while (true) {
             System.out.print(prompt);
@@ -254,7 +232,7 @@ public class ArgumentParser {
             File f = resolverFicheiroOuNull(entrada);
             if (f != null) {
                 try {
-                    return f.getCanonicalFile(); // resolve symlinks e . / ..
+                    return f.getCanonicalFile();
                 } catch (Exception e) {
                     return f.getAbsoluteFile();
                 }
@@ -314,10 +292,11 @@ public class ArgumentParser {
         System.out.println("  --cert      <nome.p12>   Certificado .p12 (repetir para múltiplos)");
         System.out.println("  --out       <saida.pdf>  PDF de saída (default: mesma pasta do PDF)");
         System.out.println("  --reason    <texto>      Razão da assinatura (default: texto do enunciado)");
-        System.out.println("  --location  <texto>      Localização (default: ESTG)");
         System.out.println("  --pass      <password>   Password do .p12 (default: pedida interativamente)");
         System.out.println("  --certs-dir <pasta>      Pasta com os .p12 (default: ./certs)");
         System.out.println("  --help / -h              Esta ajuda");
+        System.out.println();
+        System.out.println("  Nota: a localização é sempre \"ESTG\" e não é configurável.");
         System.out.println();
         System.out.println("Exemplos:");
         System.out.println("  java -jar c4.jar");
