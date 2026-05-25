@@ -18,8 +18,13 @@
   </description>
 
   <properties>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
+    <!--
+      Java 21 LTS: versão instalada no ambiente de desenvolvimento.
+      Atualizado de 11 para 21 para eliminar avisos de compatibilidade no VS Code.
+      O fat JAR gerado funciona em qualquer máquina com Java 21+.
+    -->
+    <maven.compiler.source>21</maven.compiler.source>
+    <maven.compiler.target>21</maven.compiler.target>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <pdfbox.version>3.0.2</pdfbox.version>
     <bouncycastle.version>1.78.1</bouncycastle.version>
@@ -32,6 +37,7 @@
       Biblioteca principal para leitura, escrita e assinatura de PDFs.
       https://pdfbox.apache.org/
       (AT09 – Assinatura de documentos: assinatura embebida/interna)
+      API 3.x: usar Loader.loadPDF() em vez de PDDocument.load()
     -->
     <dependency>
       <groupId>org.apache.pdfbox</groupId>
@@ -69,7 +75,7 @@
       <!--
         Maven Shade Plugin
         Gera um "fat JAR" (JAR executável com todas as dependências incluídas),
-        tornando a aplicação portável em qualquer máquina com Java 11+,
+        tornando a aplicação portável em qualquer máquina com Java 21+,
         independentemente do sistema operativo (Windows, macOS, Linux).
       -->
       <plugin>

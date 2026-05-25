@@ -3,6 +3,7 @@ package pt.estg.ca.c4.pdf;
 import pt.estg.ca.c4.cert.Signatario;
 import pt.estg.ca.c4.util.Logger;
 
+import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
@@ -36,6 +37,10 @@ import java.util.*;
  *   - Location:  "ESTG"
  *   - Reason:    "Compreendo e aceito as regras do trabalho prático..."
  *   - Name:      CN do certificado (número de aluno)
+ *
+ * NOTA API PDFBox 3.x:
+ *   - PDDocument.load(File) foi removido – usar Loader.loadPDF(File)
+ *   - FILTER_ADOBE_PPK_LITE foi renomeado para FILTER_ADOBE_PPKLITE
  */
 public class AssinadorPDF {
 
@@ -80,11 +85,21 @@ public class AssinadorPDF {
      *
      * Usa o padrão CAdES embebido em PDF (PKCS#7 detached), compatível
      * com Adobe Acrobat Reader e outros validadores de assinatura.
+     *
+     * FIX PDFBox 3.x:
+     *   - Loader.loadPDF(File) substitui PDDocument.load(File) (método removido na v3)
+     *   - FILTER_ADOBE_PPKLITE substitui FILTER_ADOBE_PPK_LITE (constante renomeada na v3)
      */
     private static void aplicarAssinatura(String entrada, Signatario signatario, String saida)
             throws Exception {
 
-        try (PDDocument doc = PDDocument.load(new File(entrada));
+        /*
+         * PDFBox 3.x: usar Loader.loadPDF() em vez de PDDocument.load().
+         * O método load(File) foi removido na versão 3.0 e substituído por
+         * Loader.loadPDF(File) para maior clareza na API.
+         * Referência: https://pdfbox.apache.org/3.0/migration.html
+         */
+        try (PDDocument doc = Loader.loadPDF(new File(entrada));
              FileOutputStream fos = new FileOutputStream(saida)) {
 
             /*
@@ -92,7 +107,13 @@ public class AssinadorPDF {
              * Referência: AT09 – "assinatura pode ser embebida no próprio documento (interna)"
              */
             PDSignature pdSignature = new PDSignature();
-            pdSignature.setFilter(PDSignature.FILTER_ADOBE_PPK_LITE);
+
+            /*
+             * PDFBox 3.x: FILTER_ADOBE_PPKLITE (sem underscore antes de LITE).
+             * A constante FILTER_ADOBE_PPK_LITE foi renomeada na versão 3.0.
+             * Referência: https://pdfbox.apache.org/3.0/migration.html
+             */
+            pdSignature.setFilter(PDSignature.FILTER_ADOBE_PPKLITE);
             pdSignature.setSubFilter(PDSignature.SUBFILTER_ADBE_PKCS7_DETACHED);
             pdSignature.setName(signatario.getNomeCN());   // CN = nº aluno (AT07)
             pdSignature.setLocation(LOCAL);                // Obrigatório: "ESTG"
