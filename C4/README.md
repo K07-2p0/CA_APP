@@ -56,30 +56,8 @@ mvn clean package -q
 ## Como Usar
 
 ```bash
-# Assinar com um certificado (password pedida interativamente, sem eco)
-java -jar target/c4-assinar-pdf-1.0.0.jar \
-     --pdf docs/acordo.pdf \
-     --cert aluno1.p12
-
-# Assinar com dois certificados (assinaturas sequenciais e incrementais)
-java -jar target/c4-assinar-pdf-1.0.0.jar \
-     --pdf docs/acordo.pdf \
-     --cert aluno1.p12 \
-     --cert aluno2.p12 \
-     --out docs/acordo_assinado.pdf
-
-# Assinar um PDF em qualquer local da máquina
-java -jar target/c4-assinar-pdf-1.0.0.jar \
-     --pdf /home/adriano/Desktop/acordo_confidencialidade.pdf \
-     --cert aluno1.p12 \
-     --cert aluno2.p12
-
-# Pasta de certs personalizada
-java -jar target/c4-assinar-pdf-1.0.0.jar \
-     --pdf docs/acordo.pdf \
-     --cert aluno1.p12 \
-     --certs-dir /caminho/para/certs
-```
+# Correr a app 
+java -jar target/c4-assinar-pdf-1.0.0.jar
 
 ---
 
